@@ -5,6 +5,14 @@ from pygame.locals import *
 
 # 2 popy.void
 
+def fps_cursor(win, start=(0,0)):
+    x0, y0 = start
+    for i in [1, 15, 30, 45, 60]:
+        x1, y1 = (WIDTH - 12 + x0, i * 10 + y0)
+        w1, h1 = (12, 1)
+        pg.draw.rect(win, grey1, (x1,y1,w1,h1))
+        write_text(win, i, (x1-10, y1), blue1, center=True, font=FONT13)
+
 def disp_values(win, values, col=grey1):
     for i, (name, value) in enumerate(values.items()):
         write_text(win, name, (25, i * 18 + 30), col, font=FONT13)
@@ -13,7 +21,7 @@ def disp_values(win, values, col=grey1):
 
 def set_indic_values(values):
     values['balls'] = len(player.net2)
-    values['a1'] = 0
+    values['a1'] = player.free
     values['fps'] = FPS
     values['elem'] = len(all_elem)
     if len(all_walls) >= 2:
@@ -35,6 +43,7 @@ def main(win):
     while run_main:
         game.draw(win)
         disp_values(win, values, graphic1)
+        fps_cursor(win)
         pos = pg.mouse.get_pos()
         for event in pg.event.get():
             if event.type == QUIT:
@@ -43,20 +52,20 @@ def main(win):
                 keys = pg.key.get_pressed()
                 if event.key in [K_ESCAPE, K_q]:
                     run_main = False
-                elif event.key == K_f:
-                    FPS = 30
                 elif keys[K_f]:
                     FPS = 6
                 elif keys[K_a]:
-                    game.set_net(2)
+                    game.set_net(20)
                     game.pr()
-                    game.toggle_spawn(SPAWN, 250)
+                    game.toggle_spawn(SPAWN, 300)
                 elif keys[K_z]:
                     game.set_orbit()
                 elif keys[K_e]:
                     game.set_balls()
                 elif keys[K_h]:
                     game.hide_elem(3)
+                elif keys[K_m]:
+                    game.toggle_player_move()
                 elif keys[K_s]:
                     game.SHOW_TEAM = not game.SHOW_TEAM
                 elif keys[K_SPACE]:
@@ -67,8 +76,8 @@ def main(win):
                 game.create_balls(3)
 
             elif event.type == MOUSEBUTTONDOWN:
-                cursor.start_drag(pos)
                 cursor.check_sel(pos, game.elems)
+                cursor.start_drag(pos)
                 if pos[0] > WIDTH - 30:
                     FPS = pos[1] // 10
 
@@ -99,7 +108,7 @@ ind_a = Indic((60, 45 + 0 * 16), (100, 12), 600)
 ind_b = Indic((60, 45 + 1 * 16), (100, 12), 600)
 ind_c = Indic((WIDTH - 50, 40), (20, 20), 600, 0)
 
-player = Player((300, 300), (35, 35), orange1, team=1)
+player = Player((300, 300), (35, 35), purple1, team=1)
 cursor = Cursor((560, 560), (10, 10), purple1)
 indics = [ind_c]
 

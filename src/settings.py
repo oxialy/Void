@@ -34,7 +34,7 @@ darkgreen1 = '#005020'
 lightgreen1 = '#289980'
 cyan1 = '#2680aa'
 darkblue1 = '#002342'
-blue1 = '#004070'
+blue1 = '#005677'
 blue2 = '#2070B5'
 lightblue1 = '#4080CC'
 purple1 = '#500077'
@@ -93,8 +93,10 @@ class Game:
         self.timer = 150
         self.SHOW_TEAM = True
         self.TOGGLE_SPAWN = False
+        self.TOGGLE_PLAYER_MOVE = False
         self.k1 = 0
         self.k2 = 0
+        self.ELEM_LIMIT = 50
         self.logs = []
 
     def init_elems(self, elems, cursor=None):
@@ -115,15 +117,16 @@ class Game:
     def pr(self):
         print(self.elems)
 
-    def pr2(self, n=3):
+    def pr2(self, m=0, n=3):
         n = min(n, len(self.elems))
         t = pg.time.get_ticks() / 1000
         t = round(t, 2)
         end = " "
-        for i, elem in enumerate(self.elems[:n]):
+        for i, elem in enumerate(self.elems[m:n]):
             if i == n - 1:
                 end = "_"
-            print(f'[{t}]', 'game', 'i:', i, "-", elem, end)
+            if elem.type in [2]:
+                print(f'[{t}]', 'game', 'i:', i, "-", elem, end)
 
     def log(self, log):
         logs = self.logs
@@ -176,7 +179,7 @@ class Game:
         self.append(spell)
 
     def create_balls(self, n, team=2):
-        if len(self.elems) < 100:
+        if len(self.elems) < self.ELEM_LIMIT:
             width, height = pg.display.get_window_size()
             for i in range(n):
                 x = rd.randint(40, width - 130)
@@ -195,7 +198,7 @@ class Game:
                         self.k2 += 1
                     elif e2.timer != 0 and e2.type == 4:
                         self.k1 += 1
-                    self.log((e1, e2))
+                    #self.log((e1, e2))
 
     def update(self):
         for elem in self.elems:
@@ -204,7 +207,7 @@ class Game:
                 self.elems.remove(elem)
         self.timer += 1
         if self.timer > 300:
-            self.pr2(3)
+            self.pr2(1, 8)
             self.timer = 0
 
     def toggle_spawn(self, event, timer=10):
@@ -213,6 +216,9 @@ class Game:
             pg.time.set_timer(event, timer)
         else:
             pg.time.set_timer(event, 0)
+
+    def toggle_player_move(self):
+        self.player.MOVE = not self.player.MOVE
 
     def append(self, new_elem):
         self.elems.append(new_elem)
@@ -245,6 +251,7 @@ class Unit:
 
     def __repr__(self):
         x, y = self.pos
+        x, y = (round(x, 3), round(y, 3))
         return repr((self.state, self.type, (x, y)))
 
     def draw(self, win):
@@ -252,9 +259,13 @@ class Unit:
         w, h = self.size
         pg.draw.circle(win, self.col, (x, y), w / 2, self.lw)
         r1 = self.scale_rect(5)
-        if self.type in [5]:
+        self.draw_hitbox(win)
+
+    def draw_hitbox(self, win):
+        if self.type in [4, 5]:
             pg.draw.rect(win, darkgreen1, self.rect, 1)
             #pg.draw.rect(win, darkgreen1, (x,y,40,40), 3)
+            write_text(win, self.type, self.pos, grey2)
 
     def ten(self, win, n=10):
         x, y = self.pos
@@ -306,6 +317,7 @@ class Ball(Unit):
         w, h = self.size
         pg.draw.circle(win, self.col, (x, y), w / 2, self.lw)
         self.draw_outline(win)
+        self.draw_hitbox(win)
 
     def draw_outline(self, win):
         if self.pair:
@@ -326,7 +338,7 @@ class Ball(Unit):
         self.pos += self.vel
 
     def decelerate(self):
-        self.vel *= 0.98
+        self.vel *= 0.5
 
     def apply_force(self):
         A = self.pos
@@ -335,7 +347,7 @@ class Ball(Unit):
             m = p.mass
             angle = get_angle(A, B)
             d = get_dist(A, B)
-            f = get_vec(angle) * min(8, max(0.0, d / 35)) * m
+            f = get_vec(angle) * min(15, max(0.0, d / 20)) * m
             self.vel += f
 
     def update(self, elems=None):
@@ -344,19 +356,34 @@ class Ball(Unit):
         self.apply_force()
         self.move()
         self.decelerate()
+        self.update_rect()
         if self.timer > 0:
             self.timer -= 1
 
 
 class Nod(Unit):
+    STATE_1 = {'mass': 0, 'dist': 0}
+    STATE_2 = {'mass': 0, 'dist': 0}
     def __init__(self, pos, size, col, center, center_dist=7, mass=1, angle=0, type=2, team=0):
         super().__init__(pos, size, col, type)
         self.mass = mass
         self.angle = angle
-        self.vel = 0.08
+        self.vel = 0.00
         self.center = center
         self.center_dist = center_dist
         self.orbit = []
+        self.set_spec()
+
+        self.i = 0
+
+    def count(self, i):
+        self.i = i
+
+    def set_spec(self):
+        self.STATE_1['mass'] = self.mass
+        self.STATE_1['dist'] = self.center_dist
+        self.STATE_2['mass'] = 5 * self.mass
+        self.STATE_2['dist'] = 2 * self.center_dist
 
     def draw(self, win):
         x, y = self.pos
@@ -381,9 +408,13 @@ class Nod(Unit):
         self.pos = get_point_from_angle(A, a, d)
 
     def update(self, elems=None):
-        if self.type == 3:
+        if self.type in [2, 3]:
             self.move()
         self.update_rect()
+        self.timer -= 1
+        if self.timer < 0:
+            self.timer = 500
+            print(111, self, self.center_dist)
 
 
 class Spell(Unit):
@@ -412,20 +443,31 @@ class Spell(Unit):
 
     def collide(self, elem):
         SCALING_MAP = {0: 1, 1: 0.2}
-        if elem.type in [4]:
+        if elem.type in [6]:
             self.target = elem
             elem.state = 0
             elem.col = purple1
             scaling = SCALING_MAP[elem.timer > 0]
             self.grow(scaling)
             self.val += 1
+        elif elem.type in [4]:
+            self.pair_elem(elem)
 
     def pair_elem(self, elem):
-        if self.home.free:
+        net2 = self.home.net2
+        if self.home.free and elem.state != 2:
             elem.pair.clear()
             nod = self.home.randnod()
             if nod:
                 elem.pair.append(nod)
+                nod.pair.append(elem)
+                print(101, net2)
+                print(102, [elem.pair for elem in net2])
+                net2.sort(key=lambda x: len(x.pair))
+                self.home.free -= 1
+                elem.state = 2
+                elem.col = orange1
+
 
     def update(self, elems=None):
         self.pos = self.home.pos
@@ -442,7 +484,11 @@ class Player(Unit):
         self.scale = 1
         self.target = None
 
+        self.mass_1 = 1
+        self.mass_2 = 5
+
         self.spell = None
+        self.MOVE = False
         self.timer = 50
 
     def move(self):
@@ -476,7 +522,7 @@ class Player(Unit):
         if elems and (not self.target or self.target.state == 0):
             # elems1 = {elem: get_dist(elem.pos, self.pos) for elem in elems if get_dist(elem.pos, self.pos) < 400}
             for elem in elems:
-                if elem.type == 4:
+                if elem.type == 4 and elem.state != 2:
                     dist = get_dist(elem.pos, self.pos)
                     if dist < 400:
                         elems1[elem] = dist
@@ -497,7 +543,9 @@ class Player(Unit):
         x0, y0 = self.pos
         for i in range(n):
             x1, y1 = randpoint(self.pos, (25, 80))
-            b1 = Nod((x1, y1), (8, 8), grey2, self, type=2)
+            angle = rd.randint(0,620) / 100
+            dist = rd.randint(25, 80)
+            b1 = Nod((x1, y1), (8, 8), grey1, self, dist, 1, angle, type=2)
             balls.append(b1)
             self.net2.append(b1)
         self.free = n
@@ -526,24 +574,42 @@ class Player(Unit):
         self.spell = spell
         return spell
 
+    def increase_mass(self):
+        for nod in self.net2:
+            nod.mass = nod.STATE_2['mass']
+            nod.center_dist = nod.STATE_2['dist']
+            print(113, nod, nod.center_dist, nod.STATE_2)
+
+    def decrease_mass(self):
+        for nod in self.net2:
+            nod.mass = nod.STATE_1['mass']
+            nod.center_dist = nod.STATE_1['dist']
+
     def randnod(self):
         if self.net2:
             n = self.free
             nod = rd.choice(self.net2[:n])
             return nod
 
+    def mouse_start_drag(self):
+        self.increase_mass()
+
+    def mouse_release(self):
+        self.decrease_mass()
+
     def update_free(self):
         pass
 
     def update(self, elems=None):
-        self.move()
-        self.apply_force()
-        self.check_target(elems)
+        if self.MOVE:
+            self.move()
+            self.apply_force()
+            self.check_target(elems)
         self.update_rect()
         self.timer -= 1
         if self.timer <= 0:
-            print(self, self.vel)
-            self.timer = 50
+            print(109, self, self.vel)
+            self.timer = 150
 
 
 class Cursor:
@@ -577,12 +643,16 @@ class Cursor:
         self.start = Vector2(pos)
         self.state = 1
         self.col = red1
+        if self.sel and self.sel.type in [1]:
+            self.sel.increase_mass()
 
     def release(self):
         self.state = 0
-        self.sel = None
         self.start = self.end
         self.col = purple2
+        if self.sel and self.sel.type in [1]:
+            self.sel.decrease_mass()
+        self.sel = None
 
     def toggle_drag(self, pos):
         self.state = not self.state
