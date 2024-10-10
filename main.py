@@ -55,7 +55,7 @@ def main(win):
                 elif keys[K_f]:
                     FPS = 6
                 elif keys[K_a]:
-                    game.set_net(20)
+                    game.set_net(80)
                     game.pr()
                     game.toggle_spawn(SPAWN, 300)
                 elif keys[K_z]:
@@ -69,8 +69,8 @@ def main(win):
                 elif keys[K_s]:
                     game.SHOW_TEAM = not game.SHOW_TEAM
                 elif keys[K_SPACE]:
-                    cursor.start_drag(pos)
                     cursor.check_sel(pos, game.elems)
+                    cursor.start_drag(pos)
 
             elif event.type == SPAWN:
                 game.create_balls(3)

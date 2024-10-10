@@ -13,7 +13,7 @@ b11 = Ball(True)
 b12 = Ball(False)
 
 a11 = {b11: False, b12: True}
-b13 = [0]
+b13 = []
 b14 = []
 
 a12 = sorted(a11, key=lambda x: a11[x])
@@ -21,7 +21,7 @@ print(a11, a12)
 
 a13 = b11.net
 
-print(b13 > b14)
+print(rd.choice(b13))
 
 
 
