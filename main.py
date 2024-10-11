@@ -73,7 +73,7 @@ def main(win):
                     cursor.start_drag(pos)
 
             elif event.type == SPAWN:
-                game.create_balls(3)
+                game.create_balls(2)
 
             elif event.type == MOUSEBUTTONDOWN:
                 cursor.check_sel(pos, game.elems)
@@ -90,7 +90,7 @@ def main(win):
             if cursor.state:
                 cursor.drag(pos)
 
-        game.update()
+        game.update(pos)
         game.check_collision()
 
         v = set_indic_values(values)
