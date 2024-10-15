@@ -11,10 +11,10 @@ from pygame import Vector2
 
 pg.init()
 
-WIDTH, HEIGHT = (1100,600)
+WIDTH, HEIGHT = (850,600)
 
 WIN = pg.display.set_mode((WIDTH, HEIGHT))
-FPS = 20
+FPS = 40
 clock = pg.time.Clock()
 
 FONT13 = pg.font.SysFont('helvetica', 13)
@@ -23,25 +23,27 @@ FONT20 = pg.font.SysFont('helvetica', 20)
 FONT30 = pg.font.SysFont('arial', 30)
 FONT35 = pg.font.SysFont('arial', 35)
 
-bg_color = '#383843'
-bg_color = '#131924'
+bg_color = '#142030'
+# bg_color = '#121223'
 graphic1 = '#7272A3'
 
+gold1 = '#D0A040'
 yellow1 = '#CDCD20'
 green1 = '#127040'
 seagreen1 = '#106030'
 darkgreen1 = '#005020'
-lightgreen1 = '#289980'
-cyan1 = '#2680aa'
+lightgreen1 = '#147B65'
+cyan1 = '#268092'
 darkblue1 = '#002342'
 blue1 = '#005677'
 blue2 = '#2070B5'
 lightblue1 = '#4080CC'
-purple1 = '#500077'
-purple2 = '#b01580'
+purple1 = '#600880'
+purple2 = '#6620BB'
 red1 = '#AA1020'
-orange1 = '#C06815'
-orange2 = '#D19930'
+red2 = '#C02030'
+orange1 = '#BB5010'
+orange2 = '#C07124'
 brown1 = '#602010'
 darkgrey1 = '#272727'
 grey1 = '#585858'
@@ -53,7 +55,7 @@ vec0 = Vector2(0, 0)
 poly1 = ((0, 0), (0, 0), (0, 0))
 orbit_vel = 0.042
 
-ball_size = (10, 10)
+ball_size = (12, 12)
 s3 = (80, 80)
 s4 = (100, 120)
 cap1 = 80
@@ -90,18 +92,23 @@ class Game:
         self.elems = elems
         self.player = player
         self.cursor = None
+        self.buttons = []
 
         self.ball_col = orange2
 
         self.a1 = 0
         self.timer_1 = 50
-        self.SHOW_TEAM = True
+        self.SHOW_TEAM = False
+        self.SHOW_POSITIONS = True
         self.TOGGLE_SPAWN = False
         self.TOGGLE_PLAYER_MOVE = False
+        self.TOGGLE_SHOW = True
         self.k1 = 0
         self.k2 = 0
         self.ELEM_LIMIT = 200
         self.logs = []
+
+        self.SPAWN = pg.USEREVENT + 1
 
     def init_elems(self, elems, cursor=None):
         self.elems.clear()
@@ -148,8 +155,11 @@ class Game:
                 elem.draw(win)
             if self.SHOW_TEAM:
                 elem.draw_team(win)
+        for button in self.buttons:
+            button.draw(win)
         self.draw_info(win)
-        self.draw_positions(win)
+        if self.SHOW_POSITIONS:
+            self.draw_positions(win)
         self.cursor.draw(win)
         self.player.draw_vec(win)
         write_text(win, (self.a1, v, len(self.logs)), (550, 24), grey2)
@@ -164,10 +174,9 @@ class Game:
         pg.draw.rect(win, red1, (x2, y2, w2, h2), 0, 3)
 
     def draw_positions(self, win):
-        player = self.player
         positions = self.player.positions
         for x, y in positions:
-            pg.draw.rect(win, grey1, (x,y,5,5), 1)
+            pg.draw.rect(win, grey1, (x,y,3,3), 1)
 
     def set_net(self, n=2):
         balls = self.player.set_net(n)
@@ -205,7 +214,7 @@ class Game:
                 x = rd.randint(40, width - 130)
                 y = rd.randint(86, 525)
                 size = ball_size
-                col = blue2
+                col = blue1
                 new_ball = Ball((x, y), size, col, type=4, team=team)
                 self.append(new_ball)
 
@@ -220,6 +229,12 @@ class Game:
                         self.k1 += 1
                     #self.log((e1, e2))
 
+    def check_click(self, pos):
+        for elem in self.buttons:
+            if elem.is_clicked(pos):
+                print(106, elem, elem.action)
+                return elem
+
     def update(self, pos):
         for elem in self.elems:
             elem.update(self.elems)
@@ -229,6 +244,16 @@ class Game:
         if self.timer_1 <= 0:
             self.pr2()
             self.timer_1 = 60
+
+    def start_spawn(self, timer=500):
+        self.set_net(50)
+        self.SHOW_TEAM = False
+        self.toggle_spawn(self.SPAWN, timer)
+        self.player.SHOW_VEC = False
+        self.SHOW_POSITIONS = False
+
+    def hide_vec(self):
+        self.player.SHOW_VEC = False
 
     def toggle_spawn(self, event, timer=10):
         self.TOGGLE_SPAWN = not self.TOGGLE_SPAWN
@@ -240,20 +265,58 @@ class Game:
     def toggle_player_move(self):
         self.player.MOVE = not self.player.MOVE
 
+    def toggle_show(self):
+        self.TOGGLE_SHOW = not self.TOGGLE_SHOW
+        for elem in self.elems:
+            elem.SHOW = self.TOGGLE_SHOW
+
     def append(self, new_elem):
         self.elems.append(new_elem)
 
+    def button_event(self):
+        pass
+
+
+class Button:
+    def __init__(self, pos, size, color1, type=0):
+        self.pos = pos
+        self.size = size
+        self.color1 = color1
+        self.type = type
+        self.action = None
+        self.update_rect()
+
+    def __repr__(self):
+        x1, y1 = self.pos
+
+        return repr((x1, y1))
+
+    def draw(self, win):
+        pg.draw.rect(win, self.color1, self.rect)
+
+    def is_clicked(self, pos):
+        return self.rect.collidepoint(pos)
+
+    def update_rect(self):
+        x, y = self.pos
+        w, h = self.size
+        self.rect = pg.Rect(x,y,w,h)
+
+    def update(self):
+        self.update_rect()
+
 
 class Unit:
-    def __init__(self, pos, size, col, type=0, team=0):
+    def __init__(self, pos, size, col_1, type=0, team=0):
         self.pos = Vector2(pos)
         self.size = size
 
-        self.col = col
+        self.col_1 = col_1
+        self.col_2 = grey2
         if type in [2, 3]:
             self.lw = 1
         elif type in [5]:
-            self.lw = 1
+            self.lw = 2
         else:
             self.lw = 0
 
@@ -281,8 +344,7 @@ class Unit:
     def draw(self, win):
         x, y = self.pos
         w, h = self.size
-        pg.draw.circle(win, self.col, (x, y), w / 2, self.lw)
-        r1 = self.scale_rect(5)
+        pg.draw.circle(win, self.col_1, (x, y), w / 2, self.lw)
 
     def draw_hitbox(self, win):
         if self.type in [4, 5]:
@@ -300,8 +362,8 @@ class Unit:
     def draw_team(self, win):
         x, y = self.pos
         w, h = self.size
-        team_col = [brown1, cyan1, red1]
-        pg.draw.circle(win, team_col[self.team], (x, y), w / 2 + 3, 2)
+        team_col = [orange1, cyan1, red2]
+        pg.draw.circle(win, team_col[self.team], (x, y), w / 2 + 2, 1)
 
     def move(self):
         self.pos += self.vel
@@ -309,6 +371,13 @@ class Unit:
     def shrink(self, scaling=0.5):
         w1, h1 = self.size
         self.size = (w1 * scaling, h1 * scaling)
+        if self.size <= (10, 10):
+            self.col_1 = lightgreen1
+        '''
+        if (1, 1) <= self.size <= (6, 6):
+            self.col_1 = blue2
+        elif self.size <= (10, 10):
+            self.col_1 = orange2'''
 
     def is_collided(self, elem):
         pass
@@ -338,15 +407,16 @@ class Unit:
 
 
 class Ball(Unit):
-    def __init__(self, pos, size, col, type=1, team=0):
-        super().__init__(pos, size, col, type, team)
+    def __init__(self, pos, size, col_1, type=1, team=0):
+        super().__init__(pos, size, col_1, type, team)
         self.pair_dist = 0
         self.decel_factor = 0.98
 
     def draw(self, win):
         x, y = self.pos
         w, h = self.size
-        pg.draw.circle(win, self.col, (x, y), w / 2, self.lw)
+        pg.draw.circle(win, self.col_1, (x, y), w / 2, self.lw)
+        pg.draw.circle(win, self.col_2, (x, y), w/ 5)
         self.draw_outline(win)
 
     def draw_outline(self, win):
@@ -368,7 +438,7 @@ class Ball(Unit):
         self.pos += self.vel
 
     def decelerate(self):
-        self.vel *= 0.58
+        self.vel *= 0.62
 
     def apply_force(self):
         A = self.pos
@@ -377,7 +447,7 @@ class Ball(Unit):
             m = p.mass
             angle = get_angle(A, B)
             d = get_dist(A, B)
-            f = get_vec(angle) * min(5, max(0.0, d / 20)) * m
+            f = get_vec(angle) * max(0, min(5, d/50)) * m
             self.vel += f
 
     def update(self, elems=None):
@@ -392,8 +462,8 @@ class Ball(Unit):
 
 
 class Nod(Unit):
-    def __init__(self, pos, size, col, center, center_dist=7, mass=1, angle=0, type=2, team=0):
-        super().__init__(pos, size, col, type)
+    def __init__(self, pos, size, col_1, center, center_dist=7, mass=1, angle=0, type=2, team=0):
+        super().__init__(pos, size, col_1, type)
         self.mass = mass
         self.angle = angle
         self.vel = 0.00
@@ -409,14 +479,14 @@ class Nod(Unit):
     def set_spec(self):
         self.STATE_1['mass'] = self.mass
         self.STATE_1['dist'] = self.center_dist
-        self.STATE_2['mass'] = 7 * self.mass
-        self.STATE_2['dist'] = 2.5 * self.center_dist
+        self.STATE_2['mass'] = 2 * self.mass
+        self.STATE_2['dist'] = 2.3 * self.center_dist
 
     def draw(self, win):
         x, y = self.pos
         w, h = self.size
         if self.type in [2, 3]:
-            pg.draw.circle(win, self.col, (x, y), w / 2, self.lw)
+            pg.draw.circle(win, self.col_1, (x, y), w / 2, self.lw)
 
     def set_orbit(self):
         pos = self.pos
@@ -433,7 +503,7 @@ class Nod(Unit):
         a = self.angle
         d = self.center_dist
         self.pos = get_point_from_angle(A, a, d)
-        self.vel *= 0.85
+        self.vel *= 0.93
 
     def unpair(self, elem):
         if elem in self.pair:
@@ -450,14 +520,23 @@ class Nod(Unit):
 
 
 class Spell(Unit):
-    def __init__(self, home, pos, size, col, type=5, team=0):
-        super().__init__(pos, size, col, type, team)
+    def __init__(self, home, pos, size, col_1, type=5, team=0):
+        super().__init__(pos, size, col_1, type, team)
+        self.set_col()
         self.home = home
         self.target = None
         self.val = 0
-        self.cap1 = 7
+        self.cap1 = 3
         self.max_size = (440, 440)
         self.min_size = (25, 25)
+
+    def set_col(self, n=120):
+        col_A = (50, 145, 135)
+        col_B = (80, 105, 194)
+        col_C = (130, 60, 160)
+        fill = [col_C for _ in range(50)]
+        self.gradient = get_gradient(col_A, col_B, n) + get_gradient(col_B, col_C, n)
+        self.gradient += self.gradient[::-1]
 
     def grow(self, scaling=1):
         w0, h0 = self.size
@@ -483,8 +562,17 @@ class Spell(Unit):
             scaling = SCALING_MAP[elem.timer > 0]
             self.grow(scaling)
             self.val += 1
-        elif elem.type in [4]:
+        elif elem.type in [4] and elem.state != 2:
             self.pair_elem(elem)
+            self.push(elem)
+
+    def push(self, elem):
+        A = self.pos
+        B = elem.pos
+        d = get_dist(A, B)
+        a = get_angle(A, B)
+        f = get_vec(a) * max(0, min(66, 5000 / d))
+        elem.vel += f
 
     def pair_elem(self, elem):
         net2 = self.home.net2
@@ -500,13 +588,17 @@ class Spell(Unit):
                 net2.sort(key=lambda x: len(x.pair))
                 self.home.free -= 1
                 self.cap1 += 1
+                elem.col_1 = blue2
                 elem.shrink(rd.randint(6,10) / 10)
                 elem.state = 2
-                elem.col = orange2
 
     def update(self, elems=None):
         self.pos = self.home.pos
+        self.col_1 = self.gradient[self.timer]
         self.update_rect()
+        self.timer -= 1
+        if self.timer < 0:
+            self.timer = 470
 
 
 class Player(Unit):
@@ -520,17 +612,23 @@ class Player(Unit):
         self.pair = None
         self.scale = 1
         self.target = None
+        self.base_pos = {}
 
         self.spell = None
+        self.SHOW_VEC = True
         self.AUTO_MOVE = False
         self.positions = []
         self.timer_1 = 30
 
+    def draw(self, win):
+        pg.draw.rect(win, self.col_1, self.rect)
+        self.draw_vec(win)
+
     def draw_vec(self, win):
-        x0, y0 = self.pos
-        x1, y1 = self.pos + self.vel
-        pg.draw.line(win, cyan1, self.pos, (x1, y1))
-        pg.draw.rect(win, grey2, (x1,y1,4,4))
+        if self.SHOW_VEC:
+            x1, y1 = self.pos + self.vel
+            pg.draw.line(win, cyan1, self.pos, (x1, y1))
+            pg.draw.rect(win, grey2, (x1,y1,4,4))
 
     def move(self):
         self.pos += self.vel
@@ -580,17 +678,21 @@ class Player(Unit):
         self.target = new_target
 
     def set_net(self, n=2):
+        clear_elems(self.net2)
         balls = []
         x0, y0 = self.pos
-        for i in range(n):
+        pop = [x for x in range(14,53)]
+        distances = rd.choices(pop, pop[::-1], k=n)
+        for i, dist in enumerate(distances):
             x1, y1 = randpoint(self.pos, (25, 80))
             angle = rd.randint(0,620) / 100
-            dist = rd.randint(15, 45)
+            # dist = rd.randint(12, 45)
             col = self.nod_col
             b1 = Nod((x1, y1), (8, 8), col, self, dist, 1, angle, type=2)
             balls.append(b1)
             b1.SHOW = False
             self.net2.append(b1)
+            self.base_pos[b1] = {'a': angle, 'd': dist}
         self.net2.sort(key=lambda x: x.center_dist)
         self.free = n
         return balls
@@ -615,9 +717,14 @@ class Player(Unit):
 
     def set_spell(self):
         col = self.spell_col
-        spell = Spell(self, self.pos, (90,90), col, type=5, team=self.team)
+        spell = Spell(self, self.pos, (60, 60), col, type=5, team=self.team)
         self.spell = spell
         return spell
+
+    def reset_nods(self):
+        for nod, spec in self.base_pos.items():
+            # nod.angle = spec['a']
+            nod.vel += rd.randint(-10, 10) / 150
 
     def increase_mass(self):
         for nod in self.net2:
@@ -716,13 +823,16 @@ class Cursor:
         self.update_rect()
 
     def drag_sel(self):
-        if self.sel:
+        if self.sel and self.sel.type in [1, 2, 3, 4]:
             self.sel.pos = self.sel_start + self.vec
 
     def start_drag(self, pos):
         self.start = Vector2(pos)
         self.state = 1
-        self.col = self.col_2
+        if self.sel:
+            self.col = yellow1
+        else:
+            self.col = self.col_2
         if self.sel and self.sel.type in [1]:
             self.sel.increase_mass()
 
@@ -746,7 +856,6 @@ class Cursor:
             if elem.rect.collidepoint(pos):
                 self.sel = elem
                 self.sel_start = elem.pos
-                self.col = yellow1
                 break
 
     def is_clicked(self, pos):
@@ -762,24 +871,15 @@ class Cursor:
         pass
 
 
-def update_all(elems):
+def clear_elems(elems):
     for elem in elems:
-        elem.update()
+        elem.state = 0
+        elems.remove(elem)
 
 
 def update_indics(indics, values):
     for indic, value in zip(indics, values):
         indic.update(value)
-
-
-def append_elem(elem, elems):
-    for e in elem:
-        elems.append(e)
-
-
-def set_net(player, elems):
-    balls = player.set_net()
-    append_elem(balls, elems)
 
 
 def get_dist(A, B):
@@ -818,12 +918,29 @@ def get_angle(A, B):
 def get_vec(angle):
     return Vector2(cos(angle), sin(angle))
 
+
 def get_angle_diff(a, b):
     c = b - a
+
 
 def sort_dict(dict_to_sort):
     sorted_list = sorted(dict_to_sort, key=lambda x: dict_to_sort[x])
     return {key: dict_to_sort[key] for key in sorted_list}
+
+
+def get_gradient(col_A, col_B, n=150):
+    r1, g1, b1 = col_A
+    r2, g2, b2 = col_B
+    k_r = (r2 - r1) / n
+    k_g = (g2 - g1) / n
+    k_b = (b2 - b1) / n
+    gradient = []
+    for i in range(n):
+        r3 = r1 + k_r * i
+        g3 = g1 + k_g * i
+        b3 = b1 + k_b * i
+        gradient.append((r3, g3, b3))
+    return gradient
 
 
 def write_text(screen, data, pos, col=grey1, font=FONT15, center=False):

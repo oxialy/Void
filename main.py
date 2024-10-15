@@ -1,4 +1,5 @@
 from src import *
+from src.buttons import buttons, set_buttons, check_click
 
 import pygame as pg
 from pygame.locals import *
@@ -37,6 +38,7 @@ def main(win):
     values = {'p1': 600, 'p2': 0, 'p3': 400, 'a1': 0, 'fps': 0}
     game = Game(WIN, player)
     game.init_elems(all_elem, cursor)
+    set_buttons(game, buttons)
     print(game.elems)
     run_main = True
 
@@ -55,7 +57,7 @@ def main(win):
                 elif keys[K_f]:
                     FPS = 6
                 elif keys[K_a]:
-                    game.set_net(80)
+                    game.set_net(50)
                     game.pr()
                     game.toggle_spawn(SPAWN, 300)
                 elif keys[K_z]:
@@ -72,17 +74,23 @@ def main(win):
                     cursor.check_sel(pos, game.elems)
                     cursor.start_drag(pos)
 
-            elif event.type == SPAWN:
+            elif event.type == SPAWN or event.type == game.SPAWN:
                 game.create_balls(2)
+                if len(game.elems) > 120:
+                    pg.time.set_timer(SPAWN, 0)
 
             elif event.type == MOUSEBUTTONDOWN:
                 cursor.check_sel(pos, game.elems)
                 cursor.start_drag(pos)
+                clicked_elem = game.check_click(pos)
+                if clicked_elem:
+                    clicked_elem.action()
                 if pos[0] > WIDTH - 30:
                     FPS = pos[1] // 10
 
             elif event.type == MOUSEBUTTONUP:
                 cursor.release()
+                player.reset_nods()
 
             elif pg.mouse.get_pressed()[0]:
                 pass
@@ -108,7 +116,7 @@ ind_a = Indic((60, 45 + 0 * 16), (100, 12), 600)
 ind_b = Indic((60, 45 + 1 * 16), (100, 12), 600)
 ind_c = Indic((WIDTH - 50, 40), (20, 20), 600, 0)
 
-player = Player((300, 300), (35, 35), purple1, team=1)
+player = Player((300, 300), (25,25), purple1, team=1)
 cursor = Cursor((560, 560), (10, 10), purple1)
 indics = [ind_c]
 

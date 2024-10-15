@@ -19,10 +19,7 @@ b14 = -11
 a12 = sorted(a11, key=lambda x: a11[x])
 print(a11, a12)
 
-a13 = b11.net
-
-print(4 % 3, 4 % -3, -4 % -3)
-
+c15 = rd.randint(range(0,5))
 
 
 
